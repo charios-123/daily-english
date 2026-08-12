@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(cmd /c \"mysql -u root -p123456 < d:\\\\daily-english-reader\\(1\\)\\\\backend\\\\update_password.sql\")",
+      "PowerShell(Invoke-WebRequest -Uri http://localhost:3000 -UseBasicParsing)",
+      "PowerShell(Invoke-WebRequest -Uri http://localhost:5173 -UseBasicParsing)"
+    ]
+  }
+}

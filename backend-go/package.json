@@ -1,0 +1,16 @@
+{
+  "name": "backend-go",
+  "version": "1.0.0",
+  "description": "每日英语阅读后端服务 - Go Gin + GORM 实现",
+  "main": "tts-script.mjs",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "msedge-tts": "^2.0.5"
+  }
+}

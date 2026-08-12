@@ -1,0 +1,156 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: 'Nunito', 'Noto Sans SC', system-ui, sans-serif;
+  line-height: 1.6;
+  font-weight: 400;
+  color: #0f172a;
+  background-color: #f0fdfa;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(1200px 500px at 10% -10%, rgba(45, 212, 191, 0.12), transparent 60%),
+    radial-gradient(900px 400px at 100% 0%, rgba(251, 146, 60, 0.08), transparent 55%),
+    #f0fdfa;
+  background-attachment: fixed;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* 标题字体 */
+h1, h2, h3, .font-display {
+  font-family: 'Fredoka', 'Noto Sans SC', sans-serif;
+  letter-spacing: 0.01em;
+}
+
+/* 自定义滚动条 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f0fdfa;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #99f6e4;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #2dd4bf;
+}
+
+/* 动画 */
+@keyframes fade-in-down {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-down {
+  animation: fade-in-down 0.3s ease-out;
+}
+
+/* Clay 卡片工具类（设计系统主风格） */
+.clay-card {
+  background: #ffffff;
+  border-radius: 20px;
+  border: 1px solid rgba(13, 148, 136, 0.08);
+  box-shadow: 4px 4px 8px rgba(13, 148, 136, 0.08), inset -2px -2px 8px rgba(255, 255, 255, 0.9);
+  transition: transform 0.2s ease-out, box-shadow 0.25s ease-out;
+}
+
+.clay-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 6px 6px 14px rgba(13, 148, 136, 0.14), inset -2px -2px 10px rgba(255, 255, 255, 0.95), 0 12px 24px rgba(13, 148, 136, 0.12);
+}
+
+.clay-btn {
+  border-radius: 14px;
+  transition: transform 0.15s ease-out, box-shadow 0.15s ease-out, opacity 0.15s ease-out;
+}
+
+.clay-btn:hover {
+  transform: translateY(-1px);
+  opacity: 0.92;
+}
+
+.clay-btn:active {
+  transform: translateY(0) scale(0.97);
+}
+
+/* 安全区域 */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* AI分析内容样式 */
+.ai-analysis-content {
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.ai-analysis-content h1:first-child,
+.ai-analysis-content h2:first-child {
+  margin-top: 0;
+}
+
+/* 单词卡片样式 */
+.ai-analysis-content li {
+  padding: 6px 0;
+  border-bottom: 1px dashed #e2e8f0;
+}
+
+.ai-analysis-content li:last-child {
+  border-bottom: none;
+}
+
+/* 音标样式 */
+.ai-analysis-content code {
+  font-family: 'Courier New', monospace;
+}
+
+/* 滚动条美化 */
+.ai-analysis-content::-webkit-scrollbar {
+  width: 4px;
+}
+
+.ai-analysis-content::-webkit-scrollbar-thumb {
+  background: #99f6e4;
+  border-radius: 2px;
+}
+
+.ai-analysis-content::-webkit-scrollbar-thumb:hover {
+  background: #2dd4bf;
+}
+
+/* 尊重减少动态效果偏好 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
