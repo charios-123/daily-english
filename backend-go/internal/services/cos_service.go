@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"daily-english-reader-backend/config"
+	"daily-english-reader-backend/internal/config"
 
 	"github.com/tencentyun/cos-go-sdk-v5"
 )

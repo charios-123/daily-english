@@ -3,12 +3,12 @@ package handlers
 import (
 	"net/http"
 
-	"daily-english-reader-backend/config"
-	"daily-english-reader-backend/database"
-	"daily-english-reader-backend/dto"
-	"daily-english-reader-backend/middleware"
-	"daily-english-reader-backend/models"
-	"daily-english-reader-backend/utils"
+	"daily-english-reader-backend/internal/config"
+	"daily-english-reader-backend/internal/database"
+	"daily-english-reader-backend/internal/dto"
+	"daily-english-reader-backend/internal/middleware"
+	"daily-english-reader-backend/internal/models"
+	"daily-english-reader-backend/internal/utils"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"

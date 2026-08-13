@@ -30,11 +30,11 @@ type TtsService struct {
 
 // NewTtsService 创建 TTS 服务
 func NewTtsService() *TtsService {
-	// 优先使用当前目录下的 tts-script.mjs
+	// 优先使用项目根目录 scripts/ 下的 tts-script.mjs
 	dir, err := os.Getwd()
-	script := "tts-script.mjs"
+	script := filepath.Join("scripts", "tts-script.mjs")
 	if err == nil {
-		script = filepath.Join(dir, "tts-script.mjs")
+		script = filepath.Join(dir, "scripts", "tts-script.mjs")
 	}
 	return &TtsService{scriptPath: script}
 }

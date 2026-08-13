@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"time"
 
-	"daily-english-reader-backend/database"
-	"daily-english-reader-backend/dto"
-	"daily-english-reader-backend/models"
+	"daily-english-reader-backend/internal/database"
+	"daily-english-reader-backend/internal/dto"
+	"daily-english-reader-backend/internal/models"
 
 	"gorm.io/datatypes"
 )

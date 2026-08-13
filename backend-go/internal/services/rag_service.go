@@ -9,8 +9,8 @@ import (
 	"strings"
 	"sync"
 
-	"daily-english-reader-backend/database"
-	"daily-english-reader-backend/models"
+	"daily-english-reader-backend/internal/database"
+	"daily-english-reader-backend/internal/models"
 )
 
 // RAGService 检索增强生成服务（轻量实现：词频向量 + 余弦相似度检索，无需外部向量数据库）

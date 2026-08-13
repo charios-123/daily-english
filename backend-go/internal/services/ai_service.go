@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"daily-english-reader-backend/config"
+	"daily-english-reader-backend/internal/config"
 )
 
 // AiService AI 知识点分析服务：优先调用 DeepSeek 大模型，失败时降级为规则分析

@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"daily-english-reader-backend/utils"
+	"daily-english-reader-backend/internal/utils"
 
 	"github.com/gin-gonic/gin"
 )

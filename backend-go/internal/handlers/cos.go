@@ -5,8 +5,8 @@ import (
 	"path"
 	"strings"
 
-	"daily-english-reader-backend/services"
-	"daily-english-reader-backend/utils"
+	"daily-english-reader-backend/internal/services"
+	"daily-english-reader-backend/internal/utils"
 
 	"github.com/gin-gonic/gin"
 )

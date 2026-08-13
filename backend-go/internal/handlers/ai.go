@@ -4,10 +4,10 @@ import (
 	"net/http"
 	"strings"
 
-	"daily-english-reader-backend/database"
-	"daily-english-reader-backend/models"
-	"daily-english-reader-backend/services"
-	"daily-english-reader-backend/utils"
+	"daily-english-reader-backend/internal/database"
+	"daily-english-reader-backend/internal/models"
+	"daily-english-reader-backend/internal/services"
+	"daily-english-reader-backend/internal/utils"
 
 	"github.com/gin-gonic/gin"
 )

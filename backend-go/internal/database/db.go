@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log"
 
-	"daily-english-reader-backend/config"
-	"daily-english-reader-backend/models"
+	"daily-english-reader-backend/internal/config"
+	"daily-english-reader-backend/internal/models"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
