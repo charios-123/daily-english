@@ -14,26 +14,26 @@ import (
 	"time"
 
 	"daily-english-reader-backend/config"
-
-	"github.com/golang-jwt/jwt/v5"
 )
 
-// AiService AI 知识点分析服务：优先调用智谱大模型，失败时降级为规则分析
+// AiService AI 知识点分析服务：优先调用 DeepSeek 大模型，失败时降级为规则分析
 type AiService struct {
 	cfg      *config.Config
 	client   *http.Client
 	cache    map[uint64]string
 	cacheMux sync.RWMutex
+	rag      *RAGService
 }
 
 // NewAiService 创建 AI 服务
-func NewAiService(cfg *config.Config) *AiService {
+func NewAiService(cfg *config.Config, rag *RAGService) *AiService {
 	return &AiService{
 		cfg: cfg,
 		client: &http.Client{
 			Timeout: 30 * time.Second,
 		},
 		cache: make(map[uint64]string),
+		rag:   rag,
 	}
 }
 
@@ -47,10 +47,22 @@ func (s *AiService) AnalyzeArticleKnowledge(articleID uint64, titleEn, titleZh, 
 	}
 	s.cacheMux.RUnlock()
 
-	// 2. 调用智谱 AI
-	result, err := s.callZhipu(titleEn, titleZh, contentEn)
+	// 2. 通过 RAG 按文章检索段落切片作为上下文（精准且省 token；无切片时回退全文）
+	knowledge := contentEn
+	if s.rag != nil {
+		if chunks := s.rag.RetrieveByArticle(articleID, 20); len(chunks) > 0 {
+			contents := make([]string, 0, len(chunks))
+			for _, ch := range chunks {
+				contents = append(contents, ch.Content)
+			}
+			knowledge = strings.Join(contents, "\n\n")
+		}
+	}
+
+	// 3. 调用 DeepSeek AI
+	result, err := s.callDeepSeek(titleEn, titleZh, knowledge)
 	if err != nil {
-		// 3. 失败降级为规则分析
+		// 4. 失败降级为规则分析（降级基于完整英文全文）
 		fallback := s.generateFallbackAnalysis(titleEn, titleZh, contentEn)
 		return fallback
 	}
@@ -63,20 +75,20 @@ func (s *AiService) AnalyzeArticleKnowledge(articleID uint64, titleEn, titleZh, 
 	return result
 }
 
-// callZhipu 调用智谱 AI Chat Completions API
-func (s *AiService) callZhipu(titleEn, titleZh, contentEn string) (string, error) {
-	url := s.cfg.ZhipuBaseURL + "/chat/completions"
+// callDeepSeek 调用 DeepSeek Chat Completions API（OpenAI 兼容，Bearer 直接鉴权）
+func (s *AiService) callDeepSeek(titleEn, titleZh, contentEn string) (string, error) {
+	return s.chatCompletion([]map[string]string{
+		{"role": "user", "content": s.buildPrompt(titleEn, titleZh, contentEn)},
+	})
+}
 
-	token, err := s.generateZhipuJWT()
-	if err != nil {
-		return "", err
-	}
-
-	prompt := s.buildPrompt(titleEn, titleZh, contentEn)
+// chatCompletion 统一的 DeepSeek 调用封装（所有 AI 能力共用）
+func (s *AiService) chatCompletion(messages []map[string]string) (string, error) {
+	url := s.cfg.DeepSeekBaseURL + "/chat/completions"
 
 	body := map[string]interface{}{
-		"model":       s.cfg.ZhipuModel,
-		"messages":    []map[string]string{{"role": "user", "content": prompt}},
+		"model":       s.cfg.DeepSeekModel,
+		"messages":    messages,
 		"temperature": 0.7,
 		"max_tokens":  2048,
 	}
@@ -86,7 +98,7 @@ func (s *AiService) callZhipu(titleEn, titleZh, contentEn string) (string, error
 	if err != nil {
 		return "", err
 	}
-	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Authorization", "Bearer "+s.cfg.DeepSeekAPIKey)
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := s.client.Do(req)
@@ -97,7 +109,7 @@ func (s *AiService) callZhipu(titleEn, titleZh, contentEn string) (string, error
 
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("智谱API调用失败: %d %s", resp.StatusCode, string(bodyBytes))
+		return "", fmt.Errorf("DeepSeek API调用失败: %d %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	var result struct {
@@ -118,34 +130,25 @@ func (s *AiService) callZhipu(titleEn, titleZh, contentEn string) (string, error
 	return result.Choices[0].Message.Content, nil
 }
 
-// generateZhipuJWT 生成智谱 API 的 JWT Token（api_key 格式: id.secret）
-func (s *AiService) generateZhipuJWT() (string, error) {
-	parts := strings.Split(s.cfg.ZhipuAPIKey, ".")
-	if len(parts) != 2 {
-		return "", errors.New("API Key格式不正确，应为 id.secret 格式")
-	}
-	id, secret := parts[0], parts[1]
+// AskWithRAG RAG 增强问答：基于检索到的知识切片 + DeepSeek 生成回答
+func (s *AiService) AskWithRAG(question string, chunks []string) (string, error) {
+	knowledge := strings.Join(chunks, "\n---\n")
+	system := "你是一位英语学习助手。请基于提供的知识库内容回答用户问题，用中文回答。" +
+		"每条知识内容以【文章标题】开头，请据此指出信息来自哪篇文章。" +
+		"如果知识库内容不足以回答，请说明并给出基于常识的最佳回答。" +
+		"回答要简洁（200字以内），可以引用知识库中的例句。"
+	user := "知识库内容：\n" + knowledge + "\n\n用户问题：" + question
 
-	now := time.Now().Unix()
-	claims := jwt.MapClaims{
-		"api_key":   id,
-		"exp":       now + 3600,
-		"timestamp": now,
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	token.Header["sign_type"] = "SIGN"
-
-	signed, err := token.SignedString([]byte(secret))
-	if err != nil {
-		return "", err
-	}
-	return signed, nil
+	return s.chatCompletion([]map[string]string{
+		{"role": "system", "content": system},
+		{"role": "user", "content": user},
+	})
 }
 
 // ---- 降级兜底：基于规则的知识点分析 ----
 
 var (
-	stopWords = map[string]bool{}
+	stopWords   = map[string]bool{}
 	commonWords = map[string][2]string{}
 )
 

@@ -2,12 +2,26 @@ package services
 
 import (
 	"bytes"
+	"encoding/json"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 )
+
+// WordBoundary 单词级时间戳（秒）
+type WordBoundary struct {
+	Word     string  `json:"word"`
+	Offset   float64 `json:"offset"`
+	Duration float64 `json:"duration"`
+}
+
+// TtsResult TTS 生成结果：音频数据 + 词级时间戳
+type TtsResult struct {
+	Audio      []byte
+	Boundaries []WordBoundary
+}
 
 // TtsService 文本转语音服务（通过 Node.js 脚本调用 edge-tts，免费）
 type TtsService struct {
@@ -25,9 +39,9 @@ func NewTtsService() *TtsService {
 	return &TtsService{scriptPath: script}
 }
 
-// TextToSpeech 将文本转换为 MP3 字节数据
-func (s *TtsService) TextToSpeech(text string) []byte {
-	// 创建临时音频文件
+// TextToSpeech 将文本转换为 MP3 字节数据，并采集词级时间戳
+func (s *TtsService) TextToSpeech(text string) *TtsResult {
+	// 创建临时音频和元数据文件
 	tmpFile, err := os.CreateTemp("", "tts-*.mp3")
 	if err != nil {
 		log.Printf("创建临时文件失败: %v", err)
@@ -37,8 +51,17 @@ func (s *TtsService) TextToSpeech(text string) []byte {
 	tmpFile.Close()
 	defer os.Remove(tmpPath)
 
+	metaFile, err := os.CreateTemp("", "tts-*.json")
+	if err != nil {
+		log.Printf("创建临时元数据文件失败: %v", err)
+		return nil
+	}
+	metaPath := metaFile.Name()
+	metaFile.Close()
+	defer os.Remove(metaPath)
+
 	// 调用 Node.js 脚本
-	cmd := exec.Command("node", s.scriptPath, text, tmpPath)
+	cmd := exec.Command("node", s.scriptPath, text, tmpPath, metaPath)
 	cmd.Env = os.Environ()
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -56,8 +79,16 @@ func (s *TtsService) TextToSpeech(text string) []byte {
 		return nil
 	}
 
-	log.Printf("音频生成成功，大小: %d bytes", len(data))
-	return data
+	// 解析词级时间戳
+	var boundaries []WordBoundary
+	if metaData, err := os.ReadFile(metaPath); err == nil && len(metaData) > 0 {
+		if err := json.Unmarshal(metaData, &boundaries); err != nil {
+			log.Printf("解析词级时间戳失败: %v", err)
+		}
+	}
+
+	log.Printf("音频生成成功，大小: %d bytes，词级时间戳: %d 个", len(data), len(boundaries))
+	return &TtsResult{Audio: data, Boundaries: boundaries}
 }
 
 // EstimateDuration 估算音频时长（英文约150词/分钟，与 Java 版 ceil(wordCount/2.5) 一致）

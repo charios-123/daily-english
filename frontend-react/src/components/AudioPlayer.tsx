@@ -12,9 +12,10 @@ interface AudioPlayerProps {
   onTimeUpdate?: (currentTime: number, duration: number) => void
   onPlayStateChange?: (isPlaying: boolean) => void
   onWordBoundaries?: (boundaries: WordBoundary[]) => void
+  disableAnalysis?: boolean
 }
 
-export const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, title, onTimeUpdate, onPlayStateChange, onWordBoundaries }) => {
+export const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, title, onTimeUpdate, onPlayStateChange, onWordBoundaries, disableAnalysis }) => {
   const audioRef = useRef<HTMLAudioElement>(null)
   const progressRef = useRef<HTMLDivElement>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
@@ -35,6 +36,9 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, title, onTimeUpda
 
   // 初始化音频分析
   const initAudioAnalysis = useCallback(() => {
+    // 已有精确词级时间戳时跳过能量检测
+    if (disableAnalysis) return
+
     const audio = audioRef.current
     if (!audio || audioContextRef.current) return
 
@@ -57,7 +61,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, title, onTimeUpda
     } catch (e) {
       console.error('初始化音频分析失败:', e)
     }
-  }, [])
+  }, [disableAnalysis])
 
   // 开始能量分析
   const startEnergyAnalysis = useCallback(() => {

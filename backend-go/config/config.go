@@ -28,9 +28,9 @@ type Config struct {
 	AdminPassword string
 	AdminName     string
 
-	ZhipuAPIKey  string
-	ZhipuBaseURL string
-	ZhipuModel   string
+	DeepSeekAPIKey  string
+	DeepSeekBaseURL string
+	DeepSeekModel   string
 
 	TTSVoiceType int
 }
@@ -76,9 +76,9 @@ func Load() *Config {
 		AdminPassword: getEnv("ADMIN_PASSWORD", "admin123"),
 		AdminName:     getEnv("ADMIN_NAME", "Admin"),
 
-		ZhipuAPIKey:  getEnv("ZHIPU_API_KEY", ""),
-		ZhipuBaseURL: getEnv("ZHIPU_BASE_URL", "https://open.bigmodel.cn/api/paas/v4"),
-		ZhipuModel:   getEnv("ZHIPU_MODEL", "glm-4-flash"),
+		DeepSeekAPIKey:  getEnv("DEEPSEEK_API_KEY", ""),
+		DeepSeekBaseURL: getEnv("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
+		DeepSeekModel:   getEnv("DEEPSEEK_MODEL", "deepseek-chat"),
 
 		TTSVoiceType: getEnvInt("TTS_VOICE_TYPE", 0),
 	}

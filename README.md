@@ -14,7 +14,7 @@
 
 - **每日文章推荐**：按日期推送今日文章，支持中英对照 / 纯英文 / 纯中文三种阅读模式
 - **音频跟读**：一键生成文章 TTS 音频（Edge-TTS），播放时**逐词高亮 + 段落级对齐跟随**，自动滚动
-- **AI 知识点分析**：调用智谱 GLM 提取生词、短语、语法、句型，带缓存与规则降级兜底
+- **AI 知识点分析**：调用 DeepSeek 大模型提取生词、短语、语法、句型，带缓存与规则降级兜底
 - **游戏化激励**：成就徽章（首次阅读 / 连续 3 天 / 阅读 10 篇 / 高级学习者）、连续天数统计、学习热度图
 - **学习数据统计**：学习天数、完成文章数、当前/最长连续天数、难度分布图表
 - **管理后台**：文章 CRUD、用户管理、数据仪表盘（管理员专属）
@@ -28,7 +28,7 @@
 |---|---|
 | 后端 | Go 1.26 · Gin v1.12 · GORM v1.31 · golang-jwt/v5 · bcrypt · godotenv |
 | 存储 | MySQL（GORM 自动迁移）· 腾讯云 COS（音频文件） |
-| AI | 智谱 GLM API（JWT 签名鉴权）· Edge-TTS（语音合成） |
+| AI | DeepSeek API（OpenAI 兼容，Bearer 鉴权）· Edge-TTS（语音合成） |
 | 前端 | React 18 · TypeScript · Vite 5 · Tailwind CSS 3 · React Router 6 |
 | 前端库 | lucide-react（图标）· recharts（图表）· react-markdown（AI 结果渲染） |
 | 设计系统 | Claymorphism 风格 · teal 主色 · Fredoka / Nunito 字体（ui-ux-pro-max skill 生成） |
@@ -47,7 +47,7 @@
                                         MySQL 数据库   腾讯云 COS
                                           │              │
                                         (不可用时       Edge-TTS
-                                        文章接口降级兜底)  智谱 GLM
+                                        文章接口降级兜底)   DeepSeek
 ```
 
 ### 目录结构
@@ -110,8 +110,8 @@ COS_SECRET_KEY=your_cos_secret_key
 COS_REGION=ap-guangzhou
 COS_BUCKET=your-bucket-name
 
-# 智谱 GLM（AI 知识点分析）
-ZHIPU_API_KEY=your_zhipu_api_key
+# DeepSeek（AI 知识点分析）
+DEEPSEEK_API_KEY=your_deepseek_api_key
 ```
 
 ### 2. 启动后端（:8081）
@@ -153,7 +153,7 @@ npm run dev
 | 文章 | GET | `/api/articles/:id` | 文章详情 | 公开 |
 | 进度 | GET | `/api/progress` | 获取学习进度 | Bearer |
 | 进度 | POST | `/api/progress/complete` | 标记完成（返回新徽章） | Bearer |
-| AI | POST | `/api/ai/analyze` | 知识点分析（智谱 + 降级） | Bearer |
+| AI | POST | `/api/ai/analyze` | 知识点分析（DeepSeek + 降级） | Bearer |
 | TTS | POST | `/api/tts/generate` | 生成音频（Edge-TTS → COS） | Bearer |
 | COS | GET | `/api/cos/credentials` | 上传凭证 | Bearer |
 | COS | POST | `/api/cos/upload` | 上传文件 | Bearer |
@@ -171,7 +171,7 @@ npm run dev
 
 ### 2. 降级兜底策略
 - **数据库不可用**：文章列表/详情/今日接口自动返回内置静态文章数据，阅读核心链路不受影响
-- **AI 不可用**：智谱调用失败或超时（30s）时，按关键词/词缀/句式规则生成基础知识点分析；结果按文章缓存，避免重复请求
+- **AI 不可用**：DeepSeek 调用失败或超时（30s）时，按关键词/词缀/句式规则生成基础知识点分析；结果按文章缓存，避免重复请求
 
 ### 3. 音频-文本对齐
 - 后端 Edge-TTS 生成音频后按 `ceil(单词数 / 2.5)` 估算时长上传 COS

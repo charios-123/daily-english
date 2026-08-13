@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react'
-import { Article } from '../types'
+import { Article, WordBoundaryInfo } from '../types'
 import { DIFFICULTY_LABELS } from '../constants'
 import { CheckCircle2, Calendar, Trophy, Volume2, Loader2 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
@@ -29,6 +29,67 @@ interface WordTiming {
   wordIndex: number
 }
 
+// 归一化单词：小写 + 去除非字母数字字符
+const normalizeWord = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '')
+
+// 将 edge-tts 词级时间戳对齐到文章单词
+// edge-tts 的 WordBoundary 词序与文本一致，采用顺序贪心匹配；
+// 缩写（如 I'm → I + 'm）合并匹配；匹配不上的词用相邻边界插值兜底
+function alignToWordBoundaries(
+  allWords: { word: string; paragraphIndex: number; wordIndex: number }[],
+  boundaries: WordBoundaryInfo[]
+): WordTiming[] {
+  const timings: WordTiming[] = []
+  let bIdx = 0
+
+  for (const w of allWords) {
+    const target = normalizeWord(w.word)
+    let start = 0
+    let end = 0
+    let matched = false
+
+    while (bIdx < boundaries.length && !matched) {
+      const single = normalizeWord(boundaries[bIdx].word)
+      if (single === target) {
+        start = boundaries[bIdx].offset
+        end = start + boundaries[bIdx].duration
+        matched = true
+        bIdx++
+        break
+      }
+      // 尝试合并下一个边界（处理 TTS 拆分缩写）
+      if (bIdx + 1 < boundaries.length) {
+        const merged = single + normalizeWord(boundaries[bIdx + 1].word)
+        if (merged === target) {
+          start = boundaries[bIdx].offset
+          end = boundaries[bIdx + 1].offset + boundaries[bIdx + 1].duration
+          matched = true
+          bIdx += 2
+          break
+        }
+      }
+      bIdx++
+    }
+
+    if (!matched) {
+      // 边界耗尽：用前一个词结束后插值
+      const last = timings[timings.length - 1]
+      start = last ? last.endTime + 0.08 : 0
+      end = start + 0.3
+    }
+
+    timings.push({
+      word: w.word,
+      startTime: start,
+      endTime: end,
+      paragraphIndex: w.paragraphIndex,
+      wordIndex: w.wordIndex,
+    })
+  }
+
+  return timings
+}
+
 export const ArticleReader: React.FC<ArticleReaderProps> = ({ article, isCompleted, onComplete }) => {
   const [showConfetti, setShowConfetti] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('en')
@@ -44,6 +105,9 @@ export const ArticleReader: React.FC<ArticleReaderProps> = ({ article, isComplet
   // 存储音频分析得到的单词边界
   const wordBoundariesRef = useRef<WordBoundary[]>([])
 
+  // edge-tts 精确词级时间戳（优先使用）
+  const [wordBoundaries, setWordBoundaries] = useState<WordBoundaryInfo[]>(article.wordBoundaries || [])
+
   // 计算每个单词的时间位置（基于音频分析或估算）
   const wordTimings = React.useMemo(() => {
     if (!article.content || article.content.length === 0) return []
@@ -58,6 +122,11 @@ export const ArticleReader: React.FC<ArticleReaderProps> = ({ article, isComplet
     })
 
     if (allWords.length === 0) return []
+
+    // 优先使用 edge-tts 精确词级时间戳（词与时间精确对应）
+    if (wordBoundaries.length > 0) {
+      return alignToWordBoundaries(allWords, wordBoundaries)
+    }
 
     // 如果有音频分析的边界数据，使用它
     const boundaries = wordBoundariesRef.current
@@ -119,7 +188,14 @@ export const ArticleReader: React.FC<ArticleReaderProps> = ({ article, isComplet
     })
 
     return timings
-  }, [article.content, article.durationSeconds])
+  }, [article.content, article.durationSeconds, wordBoundaries])
+
+  // 时间戳索引：`段落-词序` → 该词的起止时间（用于填充动画时长）
+  const timingMap = React.useMemo(() => {
+    const map = new Map<string, WordTiming>()
+    wordTimings.forEach(t => map.set(`${t.paragraphIndex}-${t.wordIndex}`, t))
+    return map
+  }, [wordTimings])
 
   // 处理音频分析得到的单词边界
   const handleWordBoundaries = useCallback((boundaries: WordBoundary[]) => {
@@ -180,16 +256,15 @@ export const ArticleReader: React.FC<ArticleReaderProps> = ({ article, isComplet
       const isRead = highlightedWord.paragraph === paragraphIndex && currentWordIndex < highlightedWord.word
       wordIndex++
 
+      // 当前词的填充动画时长 = 该词实际朗读时长（平滑跟随语音）
+      const timing = timingMap.get(`${paragraphIndex}-${currentWordIndex}`)
+      const fillDuration = isHighlighted && timing ? Math.max(timing.endTime - timing.startTime, 0.12) : undefined
+
       return (
         <span
           key={i}
-          className={`inline-block transition-all duration-300 ease-in-out ${
-            isHighlighted
-              ? 'bg-gradient-to-r from-primary-500 to-teal-400 text-white font-semibold rounded-md px-1.5 py-0.5 shadow-lg shadow-primary-200 scale-105'
-              : isRead
-                ? 'text-primary-600 font-medium'
-                : 'text-slate-800'
-          }`}
+          className={`kf-word ${isHighlighted ? 'is-active' : isRead ? 'is-read' : ''}`}
+          style={fillDuration ? ({ '--fill-duration': `${fillDuration}s` } as React.CSSProperties) : undefined}
         >
           {segment}
         </span>
@@ -212,6 +287,9 @@ export const ArticleReader: React.FC<ArticleReaderProps> = ({ article, isComplet
       const data = await res.json()
       if (res.ok && data.data) {
         setAudioUrl(data.data.audioUrl)
+        if (Array.isArray(data.data.wordBoundaries) && data.data.wordBoundaries.length > 0) {
+          setWordBoundaries(data.data.wordBoundaries)
+        }
         alert('音频生成成功！')
       } else {
         alert(data.msg || '音频生成失败')
@@ -319,6 +397,7 @@ export const ArticleReader: React.FC<ArticleReaderProps> = ({ article, isComplet
             onTimeUpdate={handleTimeUpdate}
             onPlayStateChange={handlePlayStateChange}
             onWordBoundaries={handleWordBoundaries}
+            disableAnalysis={wordBoundaries.length > 0}
           />
         </div>
       </div>

@@ -143,6 +143,47 @@ h1, h2, h3, .font-display {
   background: #2dd4bf;
 }
 
+/* ============ 逐词高亮：卡拉OK式平滑填充 ============ */
+/* 每个词自带过渡，高亮切换时颜色/背景平滑变化，不跳变 */
+.kf-word {
+  display: inline-block;
+  padding: 1px 3px;
+  border-radius: 6px;
+  color: #334155;
+  background-color: transparent;
+  transition:
+    color 0.25s ease,
+    background-color 0.3s ease,
+    background-size 0.2s linear,
+    transform 0.3s ease;
+}
+
+/* 已读词：留下淡青色痕迹，视觉连续 */
+.kf-word.is-read {
+  color: #0f766e;
+  font-weight: 500;
+  background-color: rgba(45, 212, 191, 0.12);
+}
+
+/* 当前词：白色文字 + 渐变从左到右填充（动画时长 = 该词实际朗读时长） */
+.kf-word.is-active {
+  color: #ffffff;
+  font-weight: 600;
+  background-image: linear-gradient(90deg, #0d9488 0%, #2dd4bf 100%);
+  background-repeat: no-repeat;
+  background-size: 0% 100%;
+  animation: kf-word-fill var(--fill-duration, 0.3s) linear forwards;
+}
+
+@keyframes kf-word-fill {
+  from {
+    background-size: 0% 100%;
+  }
+  to {
+    background-size: 100% 100%;
+  }
+}
+
 /* 尊重减少动态效果偏好 */
 @media (prefers-reduced-motion: reduce) {
   *,

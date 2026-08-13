@@ -14,7 +14,15 @@ const parseArticle = (raw: any): Article => {
   if (!Array.isArray(content)) {
     content = []
   }
-  return { ...raw, content }
+  // 解析词级时间戳（数据库中是 JSON 字符串）
+  let wordBoundaries = raw.wordBoundaries
+  if (typeof wordBoundaries === 'string') {
+    try { wordBoundaries = JSON.parse(wordBoundaries) } catch { wordBoundaries = [] }
+  }
+  if (!Array.isArray(wordBoundaries)) {
+    wordBoundaries = []
+  }
+  return { ...raw, content, wordBoundaries }
 }
 
 // 解析进度数据
@@ -37,7 +45,7 @@ const parseProgress = (raw: any): UserProgress => {
 // 获取文章列表
 export const getArticles = async (): Promise<Article[]> => {
   try {
-    const res = await api.get('/articles')
+    const res = await api.get('/articles?page=1&size=100')
     if (!res.ok) throw new Error('Failed to fetch articles')
     const data = await res.json()
     let list = data.data?.records || data.data || data

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -55,12 +56,13 @@ func (h *TtsHandler) generate(c *gin.Context) {
 		englishText = englishText[:500]
 	}
 
-	// 调用 TTS 生成音频
-	audioData := h.ttsService.TextToSpeech(englishText)
-	if audioData == nil {
+	// 调用 TTS 生成音频（含词级时间戳）
+	result := h.ttsService.TextToSpeech(englishText)
+	if result == nil {
 		c.JSON(http.StatusInternalServerError, utils.Error(500, "音频生成失败"))
 		return
 	}
+	audioData := result.Audio
 
 	// 上传到 COS
 	fileName := "audio/article_" + timeToIDStr(article.ID) + ".mp3"
@@ -70,11 +72,19 @@ func (h *TtsHandler) generate(c *gin.Context) {
 		return
 	}
 
-	// 更新数据库（存储文件名，不存储完整 URL）
+	// 更新数据库（存储文件名、词级时间戳）
 	article.AudioURL = fileName
 	duration := services.EstimateDuration(englishText)
 	article.DurationSeconds = &duration
-	database.DB.Save(&article)
+	if result.Boundaries != nil && len(result.Boundaries) > 0 {
+		if boundariesJSON, err := json.Marshal(result.Boundaries); err == nil {
+			article.WordBoundaries = boundariesJSON
+		}
+	}
+	if err := database.DB.Save(&article).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, utils.Error(500, "音频信息保存失败"))
+		return
+	}
 
 	// 生成预签名 URL 返回给前端
 	presignedURL := h.cosService.GeneratePresignedURL(fileName)
@@ -83,8 +93,9 @@ func (h *TtsHandler) generate(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, utils.Success(map[string]interface{}{
-		"audioUrl": presignedURL,
-		"message":  "音频生成成功",
+		"audioUrl":       presignedURL,
+		"wordBoundaries": result.Boundaries,
+		"message":        "音频生成成功",
 	}))
 }
 

@@ -18,6 +18,7 @@ type Article struct {
 	Difficulty      string         `gorm:"size:50;not null;default:intermediate;index:idx_difficulty" json:"difficulty"`
 	DurationSeconds *int           `gorm:"column:duration_seconds" json:"durationSeconds"`
 	AudioURL        string         `gorm:"column:audio_url;size:500" json:"audioUrl"`
+	WordBoundaries  datatypes.JSON `gorm:"column:word_boundaries;type:json" json:"wordBoundaries"`
 	CreatedAt       time.Time      `gorm:"not null;default:CURRENT_TIMESTAMP" json:"createdAt"`
 	UpdatedAt       time.Time      `gorm:"not null;default:CURRENT_TIMESTAMP" json:"updatedAt"`
 }

@@ -35,9 +35,17 @@ func Init(cfg *config.Config) error {
 	sqlDB.SetMaxOpenConns(50)
 	sqlDB.SetMaxIdleConns(10)
 
-	// 自动迁移（表已存在则跳过）
-	if err := db.AutoMigrate(&models.User{}, &models.Article{}, &models.UserProgress{}); err != nil {
-		log.Printf("警告: 自动迁移失败: %v", err)
+	// 自动迁移（逐表执行，单个表失败不影响其他表建表）
+	modelsToMigrate := []interface{}{
+		&models.User{},
+		&models.Article{},
+		&models.UserProgress{},
+		&models.KnowledgeChunk{},
+	}
+	for _, m := range modelsToMigrate {
+		if err := db.AutoMigrate(m); err != nil {
+			log.Printf("警告: 自动迁移失败 (%T): %v", m, err)
+		}
 	}
 
 	DB = db

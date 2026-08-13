@@ -9,6 +9,14 @@ export interface Article {
   difficulty: 'beginner' | 'intermediate' | 'advanced'
   durationSeconds?: number
   audioUrl?: string
+  wordBoundaries?: WordBoundaryInfo[]
+}
+
+// 词级时间戳（edge-tts WordBoundary，秒）
+export interface WordBoundaryInfo {
+  word: string
+  offset: number
+  duration: number
 }
 
 export interface ContentBlock {

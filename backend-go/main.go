@@ -36,15 +36,23 @@ func main() {
 
 	// 初始化服务
 	cosService := services.NewCosService(cfg)
-	aiService := services.NewAiService(cfg)
 	ttsService := services.NewTtsService()
 	progressService := services.NewProgressService()
+	ragService := services.NewRAGService()
+	aiService := services.NewAiService(cfg, ragService)
+
+	// 后台预热 RAG 知识库（不阻塞启动）
+	go func() {
+		if database.IsAvailable() {
+			ragService.Retrieve("预热", 1)
+		}
+	}()
 
 	// 初始化处理器
 	authHandler := handlers.NewAuthHandler(cfg)
 	articleHandler := handlers.NewArticleHandler(cosService)
 	progressHandler := handlers.NewProgressHandler(progressService)
-	aiHandler := handlers.NewAiHandler(aiService)
+	aiHandler := handlers.NewAiHandler(aiService, ragService)
 	ttsHandler := handlers.NewTtsHandler(ttsService, cosService)
 	cosHandler := handlers.NewCosHandler(cosService)
 	healthHandler := handlers.NewHealthHandler()
